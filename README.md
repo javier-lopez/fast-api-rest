@@ -2,7 +2,7 @@ About
 -----
 
 Sample [FastAPI](https://fastapi.tiangolo.com/) rest service featuring
-docker/mongodb integration.
+docker/mongodb integration based on https://fastapi.tiangolo.com/tutorial
 
 Usage
 -----
