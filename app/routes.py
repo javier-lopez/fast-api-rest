@@ -1,6 +1,7 @@
 from fastapi import Path, Query, Body #data type validators
-from fastapi import File, UploadFile
+from fastapi import File, UploadFile, Form
 from fastapi import status
+from fastapi import HTTPException
 from typing  import List
 
 from .       import api
@@ -24,14 +25,17 @@ async def get_hello_me():
 # they are interpreted as "query" parameters.
 @api.get("/hello/{name}")
 async def get_hello(
-        name:str=Path(..., min_length=3, max_length=20),
-        age:int=Query(None, gt=18),
-        nationality:str=None
+        name:str=Path(..., min_length=3, max_length=20), #required because of ...
+        age:int=Query(None, gt=18), #optional because of None
+        nationality:str=None #optional because of None
     ):
     #curl 'localhost:5000/hello/javier'
-    #curl 'localhost:5000/hello/javier?age=19' #optional because of age=None
+    #curl 'localhost:5000/hello/javier?age=19'
     #curl 'localhost:5000/hello/javier?age=19&nationality=universal'
     msg = name.capitalize()
+
+    if name.lower() == "john":
+        raise HTTPException(status_code=406, detail="Invalid name: {}".format(name))
 
     if age:
         msg = "{} you are {} years old".format(msg, age)
@@ -103,12 +107,14 @@ async def post_user_order(user:UserOnRAM, order:OrderOnRAM, importance:int=Body(
 @api.post("/upload/small_file")
 # curl -H "Content-Type: multipart/form-data" -F "file=@small_file.txt" localhost:5000/upload/small_file
 async def upload_small_file(file:bytes=File(...)):
-    #a file defined in 'bytes' save its content in memory which limits its size
+    #a file defined as 'bytes' save its content in memory which limits its size
     return {"file_size": len(file)}
 
 @api.post("/upload/file")
 # curl -H "Content-Type: multipart/form-data" -F "file=@file.txt" localhost:5000/upload/file
 async def upload_file(file:UploadFile=File(...)):
+    # a file defined as 'UploadFile' would be handled automatically by fastapi,
+    # saving to hd when required
     contents = await file.read()
     print(contents)
     #await is required since upload_file is defined as async
@@ -122,6 +128,17 @@ async def upload_small_files(files:List[bytes]=File(...)):
 
 @api.post("/upload/files")
 # curl -H "Content-Type: multipart/form-data" \
-# -F "files=@small_file.txt" -F "files=@another_small_file.txt" localhost:5000/upload/files
+# -F "files=@file.txt" -F "files=@another_file.txt" localhost:5000/upload/files
 async def upload_files(files:List[UploadFile]=File(...)):
     return {"filenames": [file.filename for file in files]}
+
+# Upload Files with Auth
+# ======================
+@api.post("/auth/upload/file")
+# curl -H "Content-Type: multipart/form-data" \
+# -F "file=@file.txt" -F "api:secr4t" localhost:5000/auth/upload/file
+async def auth_upload_file(api:str=Form(...), file:UploadFile=File(...)):
+    return {
+        "api": api,
+        "filename": file.filename
+    }
